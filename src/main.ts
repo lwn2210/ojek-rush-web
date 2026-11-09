@@ -20,6 +20,7 @@ let game: Game = newGame(createRng(1))
 let running = false
 let best = loadBest(store)
 let layout = layoutFor(innerWidth, innerHeight)
+let lastOver: { score: number; distance: number; best: number } | null = null
 
 function resize(): void {
   const dpr = Math.min(2, window.devicePixelRatio || 1)
@@ -47,14 +48,45 @@ function finish(): void {
   running = false
   const s = score(game)
   best = saveBest(store, s)
+  lastOver = { score: s, distance: Math.floor(game.distance), best }
   $('over-score').textContent = String(s)
   $('over-km').textContent = `${Math.floor(game.distance)} m`
   $('over-best').textContent = String(best)
   $('over').hidden = false
 }
 
+function shareResult(): void {
+  if (!lastOver) return
+  const text =
+    `🛵 REKOR NGEBUT OJEK RUSH 🛵\n` +
+    `📦 Total Skor: ${lastOver.score} poin\n` +
+    `🛣️ Jarak Tempuh: ${lastOver.distance} meter jalanan Jakarta\n` +
+    `🏆 Rekor Tertinggi: ${lastOver.best}\n\n` +
+    `Bisa selip di antara kemacetan & lubang jalanan lebih jauh?\n` +
+    `👉 https://lwn2210.github.io/mini-arcade/ojek-rush/`
+
+  const btn = $('share-score')
+  if (navigator.share) {
+    navigator.share({ title: 'Rekor Ojek Rush!', text, url: 'https://lwn2210.github.io/mini-arcade/ojek-rush/' }).catch(() => {})
+  } else if (navigator.clipboard) {
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        const orig = btn.textContent
+        btn.textContent = '✅ Hasil disalin ke clipboard!'
+        setTimeout(() => (btn.textContent = orig), 2500)
+      })
+      .catch(() => {
+        window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank')
+      })
+  } else {
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank')
+  }
+}
+
 $('start').addEventListener('click', start)
 $('restart').addEventListener('click', start)
+$('share-score').addEventListener('click', shareResult)
 $('mute').addEventListener('click', () => {
   $('mute').textContent = sfx.toggleMute() ? '🔇' : '🔊'
 })
