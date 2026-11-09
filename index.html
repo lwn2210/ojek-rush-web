@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#2b2f3a" />
+    <title>Ojek Rush</title>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene"></canvas>
+      <button id="mute" class="mute" aria-label="Suara nyala/mati">🔊</button>
+
+      <div id="menu" class="overlay">
+        <div class="panel">
+          <h1>Ojek Rush</h1>
+          <p class="tagline">Ngebut nganter paket di jalanan Jakarta. Selip di antara mobil, lubang, dan orang nyebrang.</p>
+          <ul class="how">
+            <li><b>← → / A D</b> atau <b>geser jari</b> buat pindah jalur.</li>
+            <li>Ambil <b>paket</b> (+50), <b>bensin</b> (boost kebal), <b>payung</b> (anti hujan).</li>
+            <li>3 kali nabrak = <b>game over</b>.</li>
+          </ul>
+          <button id="start" class="btn">Gas!</button>
+          <p class="label" id="best"></p>
+        </div>
+      </div>
+
+      <div id="over" class="overlay" hidden>
+        <div class="panel">
+          <h2>Orderan dibatalin!</h2>
+          <p class="tagline" id="over-sub">Rating bintang satu…</p>
+          <div class="stats">
+            <div><span class="label">Skor</span><b id="over-score">0</b></div>
+            <div><span class="label">Jarak</span><b id="over-km">0 m</b></div>
+            <div><span class="label">Rekor</span><b id="over-best">0</b></div>
+          </div>
+          <button id="restart" class="btn">Coba lagi</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
