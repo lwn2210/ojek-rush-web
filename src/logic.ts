@@ -26,6 +26,9 @@ export interface Entity {
   /** Lanes per second sideways (pedestrians crossing). */
   vx: number
   dead: boolean
+  /** Generated pedestrians stay on their side of the reserved escape corridor. */
+  minX?: number
+  maxX?: number
 }
 
 export interface Difficulty {
@@ -80,9 +83,26 @@ const ITEM_WEIGHTS: { kind: ItemKind; weight: number }[] = [
   { kind: 'umbrella', weight: 2 },
 ]
 
-/** One row of traffic: hazards in at most `maxHazards` lanes (never all lanes) plus maybe an item. */
+// Reserve one slowly moving escape lane, plus its adjacent lane near a switch.
+// 20m either side covers the 7m bus and a wet, boosted one-lane transition.
+// This constrains hazard placement, not row spacing or pickup frequency.
+const ESCAPE_ROUTE = [1, 2, 3, 2, 1, 0]
+function escapeLanes(pos: number): number[] {
+  const segment = Math.floor(Math.max(0, pos) / 60)
+  const laneAt = (s: number) => ESCAPE_ROUTE[Math.max(0, s) % ESCAPE_ROUTE.length]!
+  const offset = pos % 60
+  return [laneAt(segment), ...(offset < 20 ? [laneAt(segment - 1)] : []), ...(offset > 40 ? [laneAt(segment + 1)] : [])]
+}
+
+/** Traffic rows preserve a time-aware escape corridor; human pacing needs review. */
 export function spawnRow(rng: Rng, pos: number, d: Difficulty, raining: boolean): Entity[] {
-  const lanes = [0, 1, 2, 3].sort(() => rng() - 0.5)
+  // Fisher–Yates: a random sort comparator is inconsistent and can produce
+  // different seeded traffic after browser JIT warmup.
+  const lanes = [0, 1, 2, 3]
+  for (let i = lanes.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[lanes[i], lanes[j]] = [lanes[j]!, lanes[i]!]
+  }
   const count = Math.min(d.maxHazards, LANES - 1, 1 + Math.floor(rng() * d.maxHazards))
   const out: Entity[] = []
   for (let i = 0; i < count; i++) {
@@ -98,7 +118,21 @@ export function spawnRow(rng: Rng, pos: number, d: Difficulty, raining: boolean)
     const kind = pickWeighted(rng, ITEM_WEIGHTS.filter((w) => w.kind !== 'umbrella' || raining)).kind
     out.push(makeEntity(kind, pos + d.gap / 2, lanes[count]!))
   }
-  return out
+  const reserved = escapeLanes(pos)
+  return out.filter((e) => {
+    if (!isHazard(e.kind)) return true
+    if (reserved.includes(e.x)) return false
+    if (e.kind === 'pedestrian') {
+      e.minX = 0
+      e.maxX = LANES - 1
+      for (const lane of reserved) {
+        const clearance = e.halfWidth + BIKE_HALF_WIDTH + 0.01
+        if (lane < e.x) e.minX = Math.max(e.minX, lane + clearance)
+        else e.maxX = Math.min(e.maxX, lane - clearance)
+      }
+    }
+    return true
+  })
 }
 
 export interface Game {
@@ -131,7 +165,7 @@ export function newGame(rng: Rng): Game {
   }
 }
 
-export const score = (g: Game): number => Math.floor(g.distance) + g.bonus
+export const score = (g: Game): number => Math.floor(g.distance) + Math.floor(g.bonus)
 export const isRaining = (g: Game): boolean => g.rain > 0 && g.umbrella <= 0
 
 export function moveLane(g: Game, dir: -1 | 1): void {
@@ -175,7 +209,9 @@ export function step(g: Game, dt: number): void {
   const bike = bikeEntity(g)
   for (const e of g.entities) {
     if (e.dead) continue
-    if (e.vx !== 0 && e.pos - g.distance < 35) e.x += e.vx * dt
+    if (e.vx !== 0 && e.pos - g.distance < 35) {
+      e.x = Math.max(e.minX ?? -Infinity, Math.min(e.maxX ?? Infinity, e.x + e.vx * dt))
+    }
     if (!overlaps(bike, e)) continue
     if (isHazard(e.kind)) {
       if (g.invulnerable > 0 || g.boost > 0) continue

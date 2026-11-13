@@ -7,7 +7,7 @@ Semua aturan ada di `src/logic.ts` (murni, tanpa DOM, bisa dites). `src/render.t
 
 ## Sudah ada
 - 4 jalur. Pindah jalur lewat panah / A D, geser jari, atau tap separuh layar kiri/kanan
-- Hazard: mobil, bus, lubang jalan, orang nyebrang (bergerak menyamping). Satu baris traffic tidak pernah menutup semua jalur
+- Hazard: mobil, bus, lubang jalan, orang nyebrang. Patch lokal menyisakan koridor berurutan 1→2→3→2→1→0 (60m per segmen), dua jalur bebas dekat pergantian, dan membatasi pedestrian agar tidak memasuki koridor. Ini mengurangi hazard; bukan bukti pacing manusia sudah pas.
 - Item: paket (+50), bensin (boost 4 dtk: kebal + skor jarak ×1,5), payung (+30, anti hujan 8 dtk)
 - Hujan berkala: belok jadi lambat kecuali pakai payung
 - Difficulty naik tiap detik: kecepatan 14 → 34 m/s, jarak antar baris 16 → 7 m, maksimal hazard per baris 1 → 3 (capped di 120 dtk)
@@ -17,8 +17,10 @@ Semua aturan ada di `src/logic.ts` (murni, tanpa DOM, bisa dites). `src/render.t
 - Layout desktop dan HP portrait (canvas responsif, DPR sampai 2)
 
 ## Tes
-- `npm run verify`: typecheck + 19 tes vitest (tabrakan, skor, difficulty/spawner, rekor localStorage) + build. Lulus 2026-11-04.
-- Belum dicoba di browser sungguhan (belum ada pengecekan visual atau sentuhan); yang terverifikasi baru logic dan build.
+- `npm ci`, lalu `npm install --no-save --package-lock=false --ignore-scripts playwright@1.65.0`; pasang browser dengan `npx --no-install playwright install chromium` pada OS yang didukung. Alternatif browser existing: set `CHROME_PATH` ke executable lokal; tidak ada path home/browser hardcoded pada gate baru.
+- `npm run verify`: typecheck, Vitest, build, browser determinisme/replay wajib (fail-closed). Gate baru menguji cold/warm seed61 dan 24 replay browser keyboard-handler dengan seeds1/61/94, normal600s/wet150s, dt1/60 dan0.05. Ini waktu simulasi, bukan waktu bermain manusia.
+- Fresh clean-install + verify lulus lokal macOS13 dengan Chrome existing. Download managed Chromium Playwright1.65 gagal karena mac13 tidak didukung. Ubuntu/container/CI remote belum diverifikasi; tidak diakali lewat override OS.
+- Independent audit: 384 Node replays,24 Chrome/Node parity cases,1500 row parity dan pedestrian/pickup properties lulus. Sampel64.000 rows berkurang41,30% hazard dan22,08% rows kosong dibanding filter-only control. Review difficulty/discoverability manusia tetap wajib. Detail: ledger audit-fixes/20261113T093435Z-ojek/independent/REPORT.md.
 
 ## Gap
 - Tampilan masih kotak-kotak sederhana (tanpa sprite)
